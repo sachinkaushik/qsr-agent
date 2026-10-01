@@ -59,7 +59,7 @@ Verify an existing installation at any time without changing it:
 | Configure proactive event alerts | [Automatic event subscriptions](setup.md#automatic-event-subscriptions) |
 | Understand component ownership | [Responsibility boundaries](architecture.md#responsibility-boundaries) |
 | Extend event skills and capabilities | [Autonomous decisions](autonomy.md) |
-| Understand subscription callbacks | [Event subscription flow](architecture.md#event-subscription-flow) |
+| Understand event delivery | [Event delivery flow](architecture.md#event-delivery-flow) |
 | Deploy remote MCP services | [Remote deployment](architecture.md#remote-deployment) |
 | Add a QSR domain | [Adding a QSR service](adding-a-service.md) |
 

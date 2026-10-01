@@ -34,43 +34,33 @@ User
 gives Qwen the real MCP schemas directly and removes the deferred
 `tool_search -> tool_describe -> tool_call` wrapper sequence.
 
-## Event Subscription Flow
+## Event Delivery Flow
 
-The operator UI is also a persistent MCP subscription client. This is separate
+The operator UI receives events on an HTTP endpoint. This is separate
 from Hermes, which is invoked per question for conversational reads and actions.
-At UI startup, deployment configuration supplies a generic list of remote MCP
-subscriptions. The UI calls each service's `subscribe` tool with an event type,
-condition, and callback URL.
+Services deliver events by POSTing them to the UI; the UI registers nothing on
+the service and the service holds no subscription state.
 
 ```text
-QSR operator UI starts
-  -> initialize remote MCP session
-  -> call subscribe(event_type, condition, callback_url)
-
 Domain service emits an event
   -> append the standard envelope to its durable log
-  -> run normal delivery sinks
-  -> match registered subscriptions
-  -> POST the matching envelope to the callback URL
-  -> QSR UI stores it in the notification queue
-  -> QSR UI pushes it over Server-Sent Events (SSE)
-  -> browser renders it immediately in the Automatic Alerts panel
+  -> POST the event to the QSR UI at /autonomy/events
+  -> UI validates it and durably queues it
+  -> a single worker evaluates queued events in FIFO order
+  -> Hermes selects skills, performs MCP reads, and proposes an action
+  -> browser renders the decision in the Autonomy Decisions panel
 ```
 
-The browser performs one `GET /notifications` when the page opens to restore
-the backend's retained in-memory history. It then keeps a
-`GET /notifications/stream` SSE connection open for new events; there is no
-periodic alert polling.
+The browser polls `GET /autonomy/status` every five seconds to render queued,
+processing and completed decisions along with any proposals awaiting approval.
 
-For example, Suspicious Activity registers:
+For example, Suspicious Activity posts critical events of type
+`report_suspicious_activity`. The service decides which events to send; the UI
+accepts any event type and lets Hermes judge relevance.
 
-```text
-event_type = report_suspicious_activity
-condition = severity == critical
-```
-
-This path is deterministic and does not require an LLM decision. Hermes remains
-available for follow-up investigation through the service's read tools.
+Hermes evaluates each event against the registered skills and proposes an action
+or records why no action applies. Hermes remains available for follow-up
+investigation through the service's read tools.
 
 Subscriptions are currently process-local. Restarting a domain MCP service
 clears its registrations, so the operator UI must register again. Subscriptions
@@ -134,11 +124,11 @@ Do not configure both `url` and `command` for the same server. Keep the working
 stdio registration until the corresponding remote endpoint passes the agent's
 MCP connectivity test, then replace it atomically.
 
-Event subscriptions require connectivity in both directions:
+Event delivery requires connectivity in both directions:
 
 ```text
 QSR machine -> service-machine /mcp
-service machine -> QSR-machine /notifications
+service machine -> QSR-machine /autonomy/events
 ```
 
 Use routable DNS names or IP addresses for separate machines. Put both endpoints

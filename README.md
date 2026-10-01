@@ -39,8 +39,8 @@ http://127.0.0.1:8600
 ```
 
 The UI provides operator chat, connected-service status, and a right-side
-Automatic Alerts panel for subscribed critical events. To use the CLI instead,
-run `docker compose exec qsr-agent hermes`.
+Autonomy Decisions panel showing how pushed events were assessed. To use the CLI
+instead, run `docker compose exec qsr-agent hermes`.
 
 ```bash
 make logs
@@ -49,14 +49,12 @@ make down
 ```
 
 Register remote services in `agent-config/hermes/remote-mcp.example.yaml`, setting
-each `url` to a routable MCP address, for example `http://10.0.0.25:9000/mcp`. Set
-`QSR_CALLBACK_URL` to a URL the service host can reach, for example
-`http://<qsr-host-ip>:8600/notifications`.
+each `url` to a routable MCP address, for example `http://10.0.0.25:9000/mcp`.
 
-The UI also hosts a generic autonomy webhook. Hermes selects relevant skills
-and MCP reads for incoming events; resulting actions wait for approval in the
-**Autonomy decisions** panel. See
-[Autonomous decisions](docs/autonomy.md) for runnable examples and extension
+Services deliver events by POSTing them to `/autonomy/events` on this UI; they do
+not register callbacks. Hermes selects relevant skills and MCP reads for incoming
+events; resulting actions wait for approval in the **Autonomy decisions** panel.
+See [Autonomous decisions](docs/autonomy.md) for runnable examples and extension
 points.
 
 There is no fixed event-to-action mapping. The included catalog supports menu

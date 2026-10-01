@@ -11,7 +11,6 @@ REGISTRY ?= true
 REGISTRY_URL ?= intel/
 QSR_IMAGE ?= $(REGISTRY_URL)qsr-agent:$(TAG)
 REGISTRY_LOWER := $(shell echo $(REGISTRY) | tr A-Z a-z)
-QSR_CALLBACK_URL ?=
 HERMES_INSTALL_COMMIT ?=
 HOST_UID ?= $(shell id -u)
 HOST_GID ?= $(shell id -g)
@@ -19,7 +18,7 @@ RENDER_DEVICE ?= $(firstword $(wildcard /dev/dri/renderD*))
 RENDER_GID ?= $(shell if [ -n "$(RENDER_DEVICE)" ]; then stat -c '%g' "$(RENDER_DEVICE)"; else echo 992; fi)
 
 export MODEL_ROOT MODEL_ID OVMS_PORT QSR_UI_PORT QSR_UI_HOST
-export QSR_CALLBACK_URL HERMES_INSTALL_COMMIT QSR_IMAGE TAG
+export HERMES_INSTALL_COMMIT QSR_IMAGE TAG
 export HOST_UID HOST_GID RENDER_GID
 
 .PHONY: init-env check build build-ready up up-ready down restart logs status download-models
