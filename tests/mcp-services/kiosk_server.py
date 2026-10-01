@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Simulated Kiosk service built on the mcp-service-sdk contract.
+"""Simulated Kiosk service exposed as standard MCP tools.
 
-Declares one read tool (`get_kiosk_context`) and gated menu action tools on a
-ServiceServer, then serves them over the shared stdio transport. Tool names and
-JSON-Schema signatures are stable for any compatible MCP client.
+Declares a read tool (`get_kiosk_context`) and menu action tools, then serves
+them over the shared stdio transport. Tool names and JSON-Schema signatures
+are stable for any compatible MCP client.
 """
 
 from __future__ import annotations
@@ -19,12 +19,7 @@ from uuid import uuid4
 
 import fcntl
 
-# Import the runtime first so the shared test transport is available.
 from service_runtime import run_service
-
-from mcp_service_sdk import GateLevel, ServiceConfig, ServiceServer
-
-STORE_ID = "qsr-001"
 
 KIOSK_CONTEXT = {
     "schema_version": "1.0",
@@ -65,15 +60,6 @@ KIOSK_CONTEXT = {
         "abandoned_sessions": 2,
     },
 }
-
-svc = ServiceServer.from_config(
-    ServiceConfig(service="kiosk-placeholder", store_id=STORE_ID, log_backend="memory", metrics="null")
-)
-
-svc.register_event_type(
-    "menu_changed",
-    schema={"item_id": "str", "available": "bool|None", "price": "float|None", "reason": "str"},
-)
 
 def _state_path() -> Path:
     return Path(
@@ -175,14 +161,6 @@ def _simulated_weather(now: float | None = None) -> dict[str, Any]:
     }
 
 
-@svc.read_tool(
-    "get_kiosk_context",
-    description=(
-        "Return a complete snapshot of restaurant identity, current menu, queue, "
-        "wait time, staffing, kiosk availability, and recent ordering activity. Use "
-        "this broad context tool for kiosk and restaurant-state questions."
-    ),
-)
 def get_kiosk_context() -> dict[str, Any]:
     context = deepcopy(KIOSK_CONTEXT)
     state = _read_kiosk_state()
@@ -209,14 +187,6 @@ def get_kiosk_context() -> dict[str, Any]:
     return context
 
 
-@svc.act_tool(
-    "change_menu",
-    level=GateLevel.AUTOMATIC,  # placeholder acknowledges; a real kiosk flips this to needs_approval
-    description=(
-        "Request a kiosk menu change. This placeholder records and acknowledges the "
-        "requested action but does not modify a real kiosk."
-    ),
-)
 def change_menu(
     item_id: str,
     reason: str,
@@ -247,14 +217,6 @@ def change_menu(
     }
 
 
-@svc.act_tool(
-    "change_menu_items",
-    level=GateLevel.AUTOMATIC,
-    description=(
-        "Apply one approved bundle of up to three menu availability changes. "
-        "The bundle is validated and persisted atomically."
-    ),
-)
 def change_menu_items(changes: list[dict[str, Any]], reason: str) -> dict[str, Any]:
     if not isinstance(changes, list) or not 1 <= len(changes) <= 3:
         raise ValueError("changes must contain between one and three items")
@@ -340,5 +302,35 @@ TOOL_SCHEMAS = {
 }
 
 
+TOOL_DESCRIPTIONS = {
+    "get_kiosk_context": (
+        "Return a complete snapshot of restaurant identity, current menu, queue, "
+        "wait time, staffing, kiosk availability, and recent ordering activity."
+    ),
+    "change_menu": "Request a placeholder kiosk menu change; no external kiosk is modified.",
+    "change_menu_items": "Apply a validated bundle of up to three placeholder menu availability changes.",
+}
+
+TOOL_HANDLERS = {
+    "get_kiosk_context": lambda _args: get_kiosk_context(),
+    "change_menu": lambda args: change_menu(**args),
+    "change_menu_items": lambda args: change_menu_items(**args),
+}
+
+
 if __name__ == "__main__":
-    run_service(svc, "kiosk-placeholder", TOOL_SCHEMAS)
+    run_service(
+        "kiosk-placeholder",
+        TOOL_SCHEMAS,
+        TOOL_HANDLERS,
+        TOOL_DESCRIPTIONS,
+        action_gates={"change_menu": "automatic", "change_menu_items": "automatic"},
+        event_schemas={
+            "menu_changed": {
+                "item_id": "str",
+                "available": "bool|None",
+                "price": "float|None",
+                "reason": "str",
+            }
+        },
+    )

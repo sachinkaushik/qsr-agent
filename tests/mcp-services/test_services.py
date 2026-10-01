@@ -10,6 +10,7 @@ from unittest.mock import patch
 
 import kiosk_server
 import order_accuracy_server
+from plain_mcp_service import gated_handler
 import service_runtime
 
 
@@ -120,49 +121,30 @@ class DomainContractTests(unittest.TestCase):
         self.assertIn("observed_at", context)
 
     def test_comp_is_denied_without_approver(self) -> None:
-        result = order_accuracy_server.svc.call_action(
-            "issue_comp", order_id="ORD-1042", amount=5.0
+        result = gated_handler(order_accuracy_server.issue_comp, "needs_approval")(
+            {"order_id": "ORD-1042", "amount": 5.0}
         )
 
         self.assertFalse(result["executed"])
-        self.assertEqual(result["level"], "needs_approval")
+        self.assertEqual(result["gate"], "needs_approval")
 
 
 class TransportTests(unittest.TestCase):
-    def test_stdio_uses_dependency_free_bridge(self) -> None:
-        with patch.dict(os.environ, {"QSR_MCP_TRANSPORT": "stdio"}, clear=False):
-            with patch.object(service_runtime, "serve") as serve:
-                service_runtime.run_service(
-                    kiosk_server.svc,
-                    "kiosk-placeholder",
-                    kiosk_server.TOOL_SCHEMAS,
-                )
+    def test_simulation_registers_plain_mcp_tools(self) -> None:
+        with patch.object(service_runtime, "serve") as serve:
+            service_runtime.run_service(
+                "kiosk-placeholder",
+                kiosk_server.TOOL_SCHEMAS,
+                kiosk_server.TOOL_HANDLERS,
+                kiosk_server.TOOL_DESCRIPTIONS,
+                action_gates={"change_menu": "automatic", "change_menu_items": "automatic"},
+            )
 
-        serve.assert_called_once_with(
-            kiosk_server.svc,
-            "kiosk-placeholder",
-            kiosk_server.TOOL_SCHEMAS,
-        )
-
-    def test_network_transport_uses_configured_binding(self) -> None:
-        environment = {
-            "QSR_MCP_TRANSPORT": "streamable-http",
-            "QSR_MCP_HOST": "0.0.0.0",
-            "QSR_MCP_PORT": "8123",
-        }
-        with patch.dict(os.environ, environment, clear=False):
-            with patch.object(kiosk_server.svc, "run") as run:
-                service_runtime.run_service(
-                    kiosk_server.svc,
-                    "kiosk-placeholder",
-                    kiosk_server.TOOL_SCHEMAS,
-                )
-
-        run.assert_called_once_with(
-            transport="streamable-http",
-            host="0.0.0.0",
-            port=8123,
-        )
+        serve.assert_called_once()
+        args = serve.call_args.args
+        self.assertEqual(args[0], "kiosk-placeholder")
+        self.assertEqual(set(args[1]), set(kiosk_server.TOOL_SCHEMAS))
+        self.assertEqual(set(args[2]), set(kiosk_server.TOOL_HANDLERS))
 
 
 if __name__ == "__main__":

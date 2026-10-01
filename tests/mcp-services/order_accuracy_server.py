@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Simulated Order Accuracy service built on the mcp-service-sdk contract.
+"""Simulated Order Accuracy service exposed as standard MCP tools.
 
-Declares the `get_order_accuracy_context` read tool plus gated act tools
-(`request_remake`, `issue_comp`) on a ServiceServer, then serves them over the
-shared stdio transport. Tool names and signatures are stable for any compatible
-MCP client.
+Declares the `get_order_accuracy_context` read tool plus act tools
+(`request_remake`, `issue_comp`) and serves them over the shared stdio transport.
+Tool names and signatures are stable for any compatible MCP client.
 """
 
 from __future__ import annotations
@@ -12,12 +11,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-# Import the runtime first so the shared test transport is available.
 from service_runtime import run_service
-
-from mcp_service_sdk import GateLevel, ServiceConfig, ServiceServer
-
-STORE_ID = "qsr-001"
 
 ORDER_ACCURACY_CONTEXT = {
     "schema_version": "1.0",
@@ -70,38 +64,10 @@ ORDER_ACCURACY_CONTEXT = {
     ],
 }
 
-svc = ServiceServer.from_config(
-    ServiceConfig(
-        service="order-accuracy-placeholder", store_id=STORE_ID, log_backend="memory", metrics="null"
-    )
-)
-
-svc.register_event_type(
-    "order_mismatch",
-    schema={"order_id": "str", "station_id": "str", "issues": "list[dict]"},
-)
-
-
-@svc.read_tool(
-    "get_order_accuracy_context",
-    description=(
-        "Return the complete current order-accuracy snapshot, including summary "
-        "metrics, station breakdowns, recent expected-versus-observed orders, "
-        "detected issues, confidence scores, and alerts. Use it for any "
-        "order-accuracy question."
-    ),
-)
 def get_order_accuracy_context() -> dict[str, Any]:
     return {**ORDER_ACCURACY_CONTEXT, "observed_at": datetime.now(UTC).isoformat()}
 
 
-@svc.act_tool(
-    "request_remake",
-    level=GateLevel.AUTOMATIC,  # placeholder acknowledges; rate-limited guardrail
-    description="Ask the line to remake an order flagged inaccurate. Placeholder only.",
-    max_calls=5,
-    per_seconds=60.0,
-)
 def request_remake(order_id: str, reason: str) -> dict[str, Any]:
     return {
         "status": "accepted",
@@ -113,11 +79,6 @@ def request_remake(order_id: str, reason: str) -> dict[str, Any]:
     }
 
 
-@svc.act_tool(
-    "issue_comp",
-    level=GateLevel.NEEDS_APPROVAL,  # comps/refunds always human-approved
-    description="Issue a comp/refund for an order. Requires human approval. Placeholder only.",
-)
 def issue_comp(order_id: str, amount: float) -> dict[str, Any]:
     return {
         "status": "accepted",
@@ -156,5 +117,41 @@ TOOL_SCHEMAS = {
 }
 
 
+TOOL_DESCRIPTIONS = {
+    "get_order_accuracy_context": (
+        "Return the full order-accuracy snapshot, including summary metrics, stations, "
+        "recent orders, detected issues, confidence scores, and alerts."
+    ),
+    "request_remake": "Ask the line to remake an order flagged inaccurate. Placeholder only.",
+    "issue_comp": "Issue a comp/refund for an order. Requires human approval. Placeholder only.",
+}
+
+TOOL_HANDLERS = {
+    "get_order_accuracy_context": lambda _args: get_order_accuracy_context(),
+    "request_remake": lambda args: request_remake(**args),
+    "issue_comp": lambda _args: {
+        "executed": False,
+        "gate": "needs_approval",
+        "reason": "awaiting human approval",
+    },
+}
+
+
 if __name__ == "__main__":
-    run_service(svc, "order-accuracy-placeholder", TOOL_SCHEMAS)
+    run_service(
+        "order-accuracy-placeholder",
+        TOOL_SCHEMAS,
+        TOOL_HANDLERS,
+        TOOL_DESCRIPTIONS,
+        action_gates={
+            "request_remake": "automatic",
+            "issue_comp": "needs_approval",
+        },
+        event_schemas={
+            "order_mismatch": {
+                "order_id": "str",
+                "station_id": "str",
+                "issues": "list[dict]",
+            }
+        },
+    )
