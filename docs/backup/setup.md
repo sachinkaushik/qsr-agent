@@ -1,6 +1,6 @@
 # Complete Local Setup
 
-[Repository overview](../README.md) | [Documentation guide](index.md) |
+[Repository overview](README.original.md) | [Documentation guide](index.md) |
 **Setup** | [Architecture](architecture.md) |
 [Add a service](adding-a-service.md)
 
@@ -143,7 +143,8 @@ service machine will not reach the QSR container.
 ### Legacy host setup
 
 `./scripts/setup.sh` remains available for installing Hermes and running the UI
-on the host. It is idempotent and performs these operations:
+on the host. It is idempotent and performs these operations (the UI build
+needs Node.js >= 20.19; see [Operator UI](operator-ui.md)):
 
 1. Validates Linux, Python, Docker, and `/dev/dri` access.
 2. Installs Hermes with its official installer when `hermes` is absent.
@@ -183,8 +184,8 @@ Keep the same overrides when later running `./scripts/setup.sh --check`.
 
 ## 3. What Hermes receives
 
-The setup merges [the reusable settings](../agent-config/hermes/config.example.yaml)
-and [local test registrations](../tests/mcp-services/hermes-mcp.example.yaml).
+The setup merges [the reusable settings](../../agent-config/hermes/config.example.yaml)
+and [local test registrations](../../tests/mcp-services/hermes-mcp.example.yaml).
 The essential settings are:
 
 ```yaml

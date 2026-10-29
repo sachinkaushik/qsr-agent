@@ -1,8 +1,8 @@
 # QSR Store Agent
 
-[Repository overview](../README.md) | **Documentation guide** |
+[Repository overview](README.original.md) | **Documentation guide** |
 [Setup](setup.md) | [Architecture](architecture.md) |
-[Add a service](adding-a-service.md)
+[Add a service](adding-a-service.md) | [Operator UI](operator-ui.md)
 
 This project is a reusable edge-agent pattern for quick-service restaurants.
 Hermes handles conversation and orchestration, a local Qwen3 model (set by `MODEL_ID` in `.env.example`) runs locally through
@@ -20,6 +20,7 @@ The repository includes:
   FastMCP, with a shared policy-gated service base (`service_base.py`).
 - `qsr-skills/`: Hermes procedures for domain Q&A and actions.
 - `agent-config/hermes/`: reusable local and remote configuration fragments.
+- `operator-ui/`: React operator UI and Python backend ([details](operator-ui.md)).
 - `scripts/setup.sh`: repeatable Linux setup and verification.
 
 The included domain values and actions are simulations. They prove contracts,
@@ -31,7 +32,9 @@ production restaurant integrations.
 1. Follow [Complete setup](setup.md) to install and run the exact local stack.
 2. Read [Architecture](architecture.md) for ownership and trust boundaries.
 3. Read [Autonomous decisions](autonomy.md) for event-triggered actions.
-4. Follow [Adding a service](adding-a-service.md) to integrate another QSR
+4. Read [Operator-taught learning](self-learning.md) to let Hermes learn
+   event responses from operators.
+5. Follow [Adding a service](adding-a-service.md) to integrate another QSR
    domain or replace a simulation with an authoritative service.
 
 After prerequisites are installed, the normal path is:
@@ -58,10 +61,12 @@ Verify an existing installation at any time without changing it:
 | Validate MCP and agent Q&A | [Run and verify](setup.md#5-run-and-verify) |
 | Understand component ownership | [Responsibility boundaries](architecture.md#responsibility-boundaries) |
 | Extend event skills and capabilities | [Autonomous decisions](autonomy.md) |
+| Learn event responses from operators | [Operator-taught learning](self-learning.md) |
+| Make another service learnable | [Self-learning integration guide](self-learning-integration.md) |
 | Understand the event flow | [Autonomy event flow](architecture.md#autonomy-event-flow) |
 | Deploy remote MCP services | [Remote deployment](architecture.md#remote-deployment) |
 | Add a QSR domain | [Adding a QSR service](adding-a-service.md) |
 
 ---
 
-[Repository overview](../README.md) | [Next: Complete setup](setup.md)
+[Repository overview](README.original.md) | [Next: Complete setup](setup.md)
